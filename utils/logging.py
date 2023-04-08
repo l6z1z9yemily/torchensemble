@@ -7,8 +7,18 @@ _tb_logger = None
 __all__ = ["set_logger", "get_tb_logger"]
 
 
+class stringFilter(logging.Filter):
+    def filter(self, record):
+        try:
+            if record.msg.find('Metrics Client') == -1 and record.msg.find('DEBUG') == -1:
+                return True
+            return False
+        except:
+            return False
+
+
 def set_logger(
-    log_file=None,
+    log_path=None,
     log_console_level="info",
     log_file_level=None,
     use_tb_logger=False,
@@ -40,22 +50,24 @@ def set_logger(
         _logger.removeHandler(h)
 
     rq = time.strftime("%Y_%m_%d_%H_%M", time.localtime(time.time()))
-    log_path = os.path.join(os.getcwd(), "logs")
+    log_path = os.path.join(os.getcwd(), "logs") if not log_path else log_path
 
     ch_formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s: %(message)s"
     )
+    _logger.setLevel(logging.INFO)
     ch = logging.StreamHandler()
-    ch.setLevel(_get_level(log_console_level))
+    ch.setLevel(logging.INFO)
     ch.setFormatter(ch_formatter)
+    ch.addFilter(stringFilter())
     _logger.addHandler(ch)
 
-    if log_file is not None:
+    if log_path is not None:
         print("Log will be saved in '{}'.".format(log_path))
         if not os.path.exists(log_path):
             os.mkdir(log_path)
             print("Create folder 'logs/'")
-        log_name = os.path.join(log_path, log_file + "-" + rq + ".log")
+        log_name = os.path.join(log_path, rq + "_log.txt")
         print("Start logging into file {}...".format(log_name))
         fh = logging.FileHandler(log_name, mode="w")
         fh.setLevel(
@@ -73,9 +85,10 @@ def set_logger(
 
     if use_tb_logger:
         tb_log_path = os.path.join(
-            log_path, log_file + "-" + rq + "_tb_logger"
+            log_path, rq + "_tb_logger"
         )
-        os.mkdir(tb_log_path)
+        if not os.path.exists(tb_log_path):
+            os.mkdir(tb_log_path)
         init_tb_logger(log_dir=tb_log_path)
 
     return _logger
